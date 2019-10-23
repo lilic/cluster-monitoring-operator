@@ -138,6 +138,7 @@ local alertmanagerRole =
       {
         spec+: {
           overrideHonorLabels: true,
+          ignoreHonorLabels: 'namespace',
           arbitraryFSAccessThroughSMs+: {
             deny: true,
           },
