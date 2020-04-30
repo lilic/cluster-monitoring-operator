@@ -15,7 +15,7 @@
 package operator
 
 import (
-	"strings"
+	"fmt"
 	"time"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -31,6 +31,7 @@ import (
 
 	"github.com/openshift/cluster-monitoring-operator/pkg/client"
 	"github.com/openshift/cluster-monitoring-operator/pkg/manifests"
+	"github.com/openshift/cluster-monitoring-operator/pkg/status"
 	"github.com/openshift/cluster-monitoring-operator/pkg/tasks"
 )
 
@@ -55,6 +56,7 @@ type Operator struct {
 	telemetryMatches []string
 	remoteWrite      bool
 
+	config *rest.Config
 	client *client.Client
 
 	cmapInf                       cache.SharedIndexInformer
@@ -83,6 +85,7 @@ func New(config *rest.Config, version, namespace, namespaceUserWorkload, namespa
 		namespace:             namespace,
 		namespaceUserWorkload: namespaceUserWorkload,
 		client:                c,
+		config:                config,
 		queue:                 workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "cluster-monitoring"),
 	}
 
@@ -335,21 +338,43 @@ func (o *Operator) sync(key string) error {
 		klog.Errorf("error occurred while setting status to in progress: %v", err)
 	}
 
-	taskName, err := tl.RunAll()
+	_, err = tl.RunAll()
 	if err != nil {
-		klog.Infof("Updating ClusterOperator status to failed. Err: %v", err)
-		failedTaskReason := strings.Join(strings.Fields(taskName+"Failed"), "")
-		reportErr := o.client.StatusReporter().SetFailed(err, failedTaskReason)
-		if reportErr != nil {
-			klog.Errorf("error occurred while setting status to failed: %v", reportErr)
+		// TODO: instrument the tasks better:
+		// - set clear msg what failed
+		// - set SLO for tasks that failed
+		// - e.g. SLO alert for cluster-monitoring-operator tasks
+		degraded, msg, err := status.IsDegraded(o.config)
+		if err != nil {
+			fmt.Println(err)
+		}
+		if degraded {
+			fmt.Println("alert?")
+			failedError := errors.New("monitoring stack alert is degraded, we are breaching our SLO - alerts for our important components are firing")
+			reportErr := o.client.StatusReporter().SetFailed(failedError, msg)
+			if reportErr != nil {
+				klog.Errorf("error occurred while setting status to failed: %v", reportErr)
+			}
 		}
 		return err
 	}
-
-	klog.Info("Updating ClusterOperator status to done.")
-	err = o.client.StatusReporter().SetDone()
+	degraded, msg, err := status.IsDegraded(o.config)
 	if err != nil {
-		klog.Errorf("error occurred while setting status to done: %v", err)
+		fmt.Println(err)
+	}
+	if degraded {
+		fmt.Println("alert?")
+		failedError := errors.New("monitoring stack alert is firing, we are breaching our SLA")
+		reportErr := o.client.StatusReporter().SetFailed(failedError, msg)
+		if reportErr != nil {
+			klog.Errorf("error occurred while setting status to failed: %v", reportErr)
+		}
+	} else if !degraded {
+		klog.Info("Updating ClusterOperator status to done.")
+		err = o.client.StatusReporter().SetDone()
+		if err != nil {
+			klog.Errorf("error occurred while setting status to done: %v", err)
+		}
 	}
 
 	return nil
