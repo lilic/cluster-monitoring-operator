@@ -89,6 +89,7 @@ func Main() int {
 	namespaceUserWorkload := flagset.String("namespace-user-workload", "openshift-user-workload-monitoring", "Namespace to deploy and manage user workload monitoring stack in.")
 	namespaceSelector := flagset.String("namespace-selector", "openshift.io/cluster-monitoring=true", "Selector for namespaces to monitor.")
 	configMapName := flagset.String("configmap", "cluster-monitoring-config", "ConfigMap name to configure the cluster monitoring stack.")
+	userWorkloadConfigMapName := flagset.String("userWorkloadConfigmap", "user-workload-monitoring-config", "ConfigMap name to configure the user workload monitoring stack.")
 	kubeconfigPath := flagset.String("kubeconfig", "", "The path to the kubeconfig to connect to the apiserver with.")
 	apiserver := flagset.String("apiserver", "", "The address of the apiserver to talk to.")
 	releaseVersion := flagset.String("release-version", "", "Currently targeted release version to be reconciled against.")
@@ -155,7 +156,7 @@ func Main() int {
 		return 1
 	}
 
-	o, err := cmo.New(config, *releaseVersion, *namespace, *namespaceUserWorkload, *namespaceSelector, *configMapName, *remoteWrite, images.asMap(), telemetryConfig.Matches)
+	o, err := cmo.New(config, *releaseVersion, *namespace, *namespaceUserWorkload, *namespaceSelector, *configMapName, *userWorkloadConfigMapName, *remoteWrite, images.asMap(), telemetryConfig.Matches)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err)
 		return 1

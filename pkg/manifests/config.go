@@ -31,11 +31,9 @@ type Config struct {
 	RemoteWrite bool                  `json:"-"`
 	Platform    configv1.PlatformType `json:"-"`
 
-	PrometheusOperatorConfig             *PrometheusOperatorConfig `json:"prometheusOperator"`
-	PrometheusOperatorUserWorkloadConfig *PrometheusOperatorConfig `json:"prometheusOperatorUserWorkload"`
+	PrometheusOperatorConfig *PrometheusOperatorConfig `json:"prometheusOperator"`
 
-	PrometheusK8sConfig          *PrometheusK8sConfig `json:"prometheusK8s"`
-	PrometheusUserWorkloadConfig *PrometheusK8sConfig `json:"prometheusUserWorkload"`
+	PrometheusK8sConfig *PrometheusK8sConfig `json:"prometheusK8s"`
 
 	AlertmanagerMainConfig *AlertmanagerMainConfig      `json:"alertmanagerMain"`
 	KubeStateMetricsConfig *KubeStateMetricsConfig      `json:"kubeStateMetrics"`
@@ -45,9 +43,15 @@ type Config struct {
 	HTTPConfig             *HTTPConfig                  `json:"http"`
 	TelemeterClientConfig  *TelemeterClientConfig       `json:"telemeterClient"`
 	K8sPrometheusAdapter   *K8sPrometheusAdapter        `json:"k8sPrometheusAdapter"`
-	UserWorkloadConfig     *UserWorkloadConfig          `json:"techPreviewUserWorkload"`
-	ThanosRulerConfig      *ThanosRulerConfig           `json:"thanosRuler"`
 	ThanosQuerierConfig    *ThanosQuerierConfig         `json:"thanosQuerier"`
+
+	UserWorkloadEnabled *bool `json:"enableUserWorkload"`
+
+	// TODO: Remove in 4.7 release.
+	PrometheusUserWorkloadConfig         *PrometheusK8sConfig      `json:"prometheusUserWorkload"`
+	PrometheusOperatorUserWorkloadConfig *PrometheusOperatorConfig `json:"prometheusOperatorUserWorkload"`
+	ThanosRulerConfig                    *ThanosRulerConfig        `json:"thanosRuler"`
+	UserWorkloadConfig                   *UserWorkloadConfig       `json:"techPreviewUserWorkload"`
 }
 
 type Images struct {

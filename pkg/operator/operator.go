@@ -50,10 +50,11 @@ const (
 type Operator struct {
 	namespace, namespaceUserWorkload string
 
-	configMapName    string
-	images           map[string]string
-	telemetryMatches []string
-	remoteWrite      bool
+	configMapName             string
+	userWorkloadConfigMapName string
+	images                    map[string]string
+	telemetryMatches          []string
+	remoteWrite               bool
 
 	client *client.Client
 
@@ -69,21 +70,22 @@ type Operator struct {
 	reconcileErrors   prometheus.Counter
 }
 
-func New(config *rest.Config, version, namespace, namespaceUserWorkload, namespaceSelector, configMapName string, remoteWrite bool, images map[string]string, telemetryMatches []string) (*Operator, error) {
+func New(config *rest.Config, version, namespace, namespaceUserWorkload, namespaceSelector, configMapName, userWorkloadConfigMapName string, remoteWrite bool, images map[string]string, telemetryMatches []string) (*Operator, error) {
 	c, err := client.New(config, version, namespace, namespaceSelector)
 	if err != nil {
 		return nil, err
 	}
 
 	o := &Operator{
-		images:                images,
-		telemetryMatches:      telemetryMatches,
-		configMapName:         configMapName,
-		remoteWrite:           remoteWrite,
-		namespace:             namespace,
-		namespaceUserWorkload: namespaceUserWorkload,
-		client:                c,
-		queue:                 workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "cluster-monitoring"),
+		images:                    images,
+		telemetryMatches:          telemetryMatches,
+		configMapName:             configMapName,
+		userWorkloadConfigMapName: userWorkloadConfigMapName,
+		remoteWrite:               remoteWrite,
+		namespace:                 namespace,
+		namespaceUserWorkload:     namespaceUserWorkload,
+		client:                    c,
+		queue:                     workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "cluster-monitoring"),
 	}
 
 	o.secretInf = cache.NewSharedIndexInformer(
@@ -229,6 +231,7 @@ func (o *Operator) handleEvent(obj interface{}) {
 	klog.V(5).Infof("ConfigMap or Secret updated: %s", key)
 
 	cmoConfigMap := o.namespace + "/" + o.configMapName
+	uwmConfigMap := o.namespaceUserWorkload + "/" + o.userWorkloadConfigMapName
 
 	switch key {
 	case cmoConfigMap:
@@ -239,6 +242,7 @@ func (o *Operator) handleEvent(obj interface{}) {
 	case telemeterCABundleConfigMap:
 	case alertmanagerCABundleConfigMap:
 	case grpcTLS:
+	case uwmConfigMap:
 	default:
 		klog.V(5).Infof("ConfigMap or Secret (%s) not triggering an update.", key)
 		return
@@ -385,6 +389,12 @@ func (o *Operator) Config(key string) (*manifests.Config, error) {
 	c, err := o.loadConfig(key)
 	if err != nil {
 		return nil, err
+	}
+
+	if c.UserWorkloadEnabled != nil && *c.UserWorkloadEnabled {
+		// TODO: Remove in 4.7 release.
+		*c.UserWorkloadConfig.Enabled = true
+		// do some other stuff
 	}
 
 	// Only fetch the token and cluster ID if they have not been specified in the config.
