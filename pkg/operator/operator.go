@@ -316,11 +316,11 @@ func (o *Operator) sync(key string) error {
 		o.client,
 		[]*tasks.TaskSpec{
 			tasks.NewTaskSpec("Updating Prometheus Operator", tasks.NewPrometheusOperatorTask(o.client, factory)),
-			tasks.NewTaskSpec("Updating user workload Prometheus Operator", tasks.NewPrometheusOperatorUserWorkloadTask(o.client, factory, config.UserWorkloadConfig)),
+			tasks.NewTaskSpec("Updating user workload Prometheus Operator", tasks.NewPrometheusOperatorUserWorkloadTask(o.client, factory, config.ClusterMonitoringConfiguration.UserWorkloadConfig)),
 			tasks.NewTaskSpec("Updating Cluster Monitoring Operator", tasks.NewClusterMonitoringOperatorTask(o.client, factory)),
 			tasks.NewTaskSpec("Updating Grafana", tasks.NewGrafanaTask(o.client, factory)),
 			tasks.NewTaskSpec("Updating Prometheus-k8s", tasks.NewPrometheusTask(o.client, factory, config)),
-			tasks.NewTaskSpec("Updating Prometheus-user-workload", tasks.NewPrometheusUserWorkloadTask(o.client, factory, config.UserWorkloadConfig)),
+			tasks.NewTaskSpec("Updating Prometheus-user-workload", tasks.NewPrometheusUserWorkloadTask(o.client, factory, config.ClusterMonitoringConfiguration.UserWorkloadConfig)),
 			tasks.NewTaskSpec("Updating Alertmanager", tasks.NewAlertmanagerTask(o.client, factory)),
 			tasks.NewTaskSpec("Updating node-exporter", tasks.NewNodeExporterTask(o.client, factory)),
 			tasks.NewTaskSpec("Updating kube-state-metrics", tasks.NewKubeStateMetricsTask(o.client, factory)),
@@ -328,8 +328,8 @@ func (o *Operator) sync(key string) error {
 			tasks.NewTaskSpec("Updating prometheus-adapter", tasks.NewPrometheusAdapterTaks(o.namespace, o.client, factory)),
 			tasks.NewTaskSpec("Updating Telemeter client", tasks.NewTelemeterClientTask(o.client, factory, config)),
 			tasks.NewTaskSpec("Updating configuration sharing", tasks.NewConfigSharingTask(o.client, factory)),
-			tasks.NewTaskSpec("Updating Thanos Querier", tasks.NewThanosQuerierTask(o.client, factory, config.UserWorkloadConfig)),
-			tasks.NewTaskSpec("Updating User Workload Thanos Ruler", tasks.NewThanosRulerUserWorkloadTask(o.client, factory, config.UserWorkloadConfig)),
+			tasks.NewTaskSpec("Updating Thanos Querier", tasks.NewThanosQuerierTask(o.client, factory, config.ClusterMonitoringConfiguration.UserWorkloadConfig)),
+			tasks.NewTaskSpec("Updating User Workload Thanos Ruler", tasks.NewThanosRulerUserWorkloadTask(o.client, factory, config.ClusterMonitoringConfiguration.UserWorkloadConfig)),
 		},
 	)
 
@@ -390,15 +390,15 @@ func (o *Operator) Config(key string) (*manifests.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	if c.UserWorkloadEnabled != nil && *c.UserWorkloadEnabled {
-		// TODO: Remove in 4.7 release.
-		*c.UserWorkloadConfig.Enabled = true
-		// do some other stuff
-	}
-
+	/*
+		if c.UserWorkloadEnabled != nil && *c.UserWorkloadEnabled {
+			// TODO: Remove in 4.7 release.
+			*c.UserWorkloadConfig.Enabled = true
+			// do some other stuff
+		}
+	*/
 	// Only fetch the token and cluster ID if they have not been specified in the config.
-	if c.TelemeterClientConfig.ClusterID == "" || c.TelemeterClientConfig.Token == "" {
+	if c.ClusterMonitoringConfiguration.TelemeterClientConfig.ClusterID == "" || c.ClusterMonitoringConfiguration.TelemeterClientConfig.Token == "" {
 		err := c.LoadClusterID(func() (*configv1.ClusterVersion, error) {
 			return o.client.GetClusterVersion("version")
 		})
@@ -451,7 +451,7 @@ func (o *Operator) Config(key string) (*manifests.Config, error) {
 		keyFound && len(keyContent) > 0 {
 
 		trueBool := true
-		c.EtcdConfig.Enabled = &trueBool
+		c.ClusterMonitoringConfiguration.EtcdConfig.Enabled = &trueBool
 	}
 
 	return c, nil
