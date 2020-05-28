@@ -31,27 +31,59 @@ type Config struct {
 	RemoteWrite bool                  `json:"-"`
 	Platform    configv1.PlatformType `json:"-"`
 
-	PrometheusOperatorConfig *PrometheusOperatorConfig `json:"prometheusOperator"`
+	ClusterMonitoringConfiguration *ClusterMonitoringConfiguration `json:"-"`
+	UserWorkloadConfiguration      *UserWorkloadConfiguration      `json:"-"`
+}
 
-	PrometheusK8sConfig *PrometheusK8sConfig `json:"prometheusK8s"`
-
-	AlertmanagerMainConfig *AlertmanagerMainConfig      `json:"alertmanagerMain"`
-	KubeStateMetricsConfig *KubeStateMetricsConfig      `json:"kubeStateMetrics"`
-	OpenShiftMetricsConfig *OpenShiftStateMetricsConfig `json:"openshiftStateMetrics"`
-	GrafanaConfig          *GrafanaConfig               `json:"grafana"`
-	EtcdConfig             *EtcdConfig                  `json:"-"`
-	HTTPConfig             *HTTPConfig                  `json:"http"`
-	TelemeterClientConfig  *TelemeterClientConfig       `json:"telemeterClient"`
-	K8sPrometheusAdapter   *K8sPrometheusAdapter        `json:"k8sPrometheusAdapter"`
-	ThanosQuerierConfig    *ThanosQuerierConfig         `json:"thanosQuerier"`
-
-	UserWorkloadEnabled *bool `json:"enableUserWorkload"`
-
+type ClusterMonitoringConfiguration struct {
+	PrometheusOperatorConfig *PrometheusOperatorConfig    `json:"prometheusOperator"`
+	PrometheusK8sConfig      *PrometheusK8sConfig         `json:"prometheusK8s"`
+	AlertmanagerMainConfig   *AlertmanagerMainConfig      `json:"alertmanagerMain"`
+	KubeStateMetricsConfig   *KubeStateMetricsConfig      `json:"kubeStateMetrics"`
+	OpenShiftMetricsConfig   *OpenShiftStateMetricsConfig `json:"openshiftStateMetrics"`
+	GrafanaConfig            *GrafanaConfig               `json:"grafana"`
+	EtcdConfig               *EtcdConfig                  `json:"-"`
+	HTTPConfig               *HTTPConfig                  `json:"http"`
+	TelemeterClientConfig    *TelemeterClientConfig       `json:"telemeterClient"`
+	K8sPrometheusAdapter     *K8sPrometheusAdapter        `json:"k8sPrometheusAdapter"`
+	ThanosQuerierConfig      *ThanosQuerierConfig         `json:"thanosQuerier"`
+	UserWorkloadEnabled      *bool                        `json:"enableUserWorkload"`
 	// TODO: Remove in 4.7 release.
 	PrometheusUserWorkloadConfig         *PrometheusK8sConfig      `json:"prometheusUserWorkload"`
 	PrometheusOperatorUserWorkloadConfig *PrometheusOperatorConfig `json:"prometheusOperatorUserWorkload"`
 	ThanosRulerConfig                    *ThanosRulerConfig        `json:"thanosRuler"`
 	UserWorkloadConfig                   *UserWorkloadConfig       `json:"techPreviewUserWorkload"`
+}
+
+type UserWorkloadConfiguration struct {
+	Global *GlobalUserWorkloadConfig `json:"global"`
+}
+
+type GlobalUserWorkloadConfig struct {
+	VerboseLogLevel *bool  `json:"verboseLogLevel"`
+	Retention       string `json:"retention"`
+}
+
+func NewUserWorkloadConfig(content io.Reader) (*UserWorkloadConfiguration, error) {
+	c := UserWorkloadConfiguration{}
+	err := k8syaml.NewYAMLOrJSONDecoder(content, 100).Decode(&c)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &c
+	// TODO: should we apply any defaults?
+	//res.applyDefaults()
+
+	return res, nil
+}
+
+func (c *Config) IsUserWorkloadEnabled() bool {
+	if *c.ClusterMonitoringConfiguration.UserWorkloadEnabled == true {
+		return true
+	}
+
+	return c.ClusterMonitoringConfiguration.UserWorkloadConfig.IsEnabled()
 }
 
 type Images struct {
@@ -204,58 +236,58 @@ func (c *Config) applyDefaults() {
 	if c.Images == nil {
 		c.Images = &Images{}
 	}
-	if c.PrometheusOperatorConfig == nil {
-		c.PrometheusOperatorConfig = &PrometheusOperatorConfig{}
+	if c.ClusterMonitoringConfiguration.PrometheusOperatorConfig == nil {
+		c.ClusterMonitoringConfiguration.PrometheusOperatorConfig = &PrometheusOperatorConfig{}
 	}
-	if c.PrometheusOperatorUserWorkloadConfig == nil {
-		c.PrometheusOperatorUserWorkloadConfig = &PrometheusOperatorConfig{}
+	if c.ClusterMonitoringConfiguration.PrometheusOperatorUserWorkloadConfig == nil {
+		c.ClusterMonitoringConfiguration.PrometheusOperatorUserWorkloadConfig = &PrometheusOperatorConfig{}
 	}
-	if c.PrometheusK8sConfig == nil {
-		c.PrometheusK8sConfig = &PrometheusK8sConfig{}
+	if c.ClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
+		c.ClusterMonitoringConfiguration.PrometheusK8sConfig = &PrometheusK8sConfig{}
 	}
-	if c.PrometheusK8sConfig.Retention == "" {
-		c.PrometheusK8sConfig.Retention = "15d"
+	if c.ClusterMonitoringConfiguration.PrometheusK8sConfig.Retention == "" {
+		c.ClusterMonitoringConfiguration.PrometheusK8sConfig.Retention = "15d"
 	}
-	if c.PrometheusUserWorkloadConfig == nil {
-		c.PrometheusUserWorkloadConfig = &PrometheusK8sConfig{}
+	if c.ClusterMonitoringConfiguration.PrometheusUserWorkloadConfig == nil {
+		c.ClusterMonitoringConfiguration.PrometheusUserWorkloadConfig = &PrometheusK8sConfig{}
 	}
-	if c.PrometheusUserWorkloadConfig.Retention == "" {
-		c.PrometheusUserWorkloadConfig.Retention = "15d"
+	if c.ClusterMonitoringConfiguration.PrometheusUserWorkloadConfig.Retention == "" {
+		c.ClusterMonitoringConfiguration.PrometheusUserWorkloadConfig.Retention = "15d"
 	}
-	if c.AlertmanagerMainConfig == nil {
-		c.AlertmanagerMainConfig = &AlertmanagerMainConfig{}
+	if c.ClusterMonitoringConfiguration.AlertmanagerMainConfig == nil {
+		c.ClusterMonitoringConfiguration.AlertmanagerMainConfig = &AlertmanagerMainConfig{}
 	}
-	if c.ThanosRulerConfig == nil {
-		c.ThanosRulerConfig = &ThanosRulerConfig{}
+	if c.ClusterMonitoringConfiguration.ThanosRulerConfig == nil {
+		c.ClusterMonitoringConfiguration.ThanosRulerConfig = &ThanosRulerConfig{}
 	}
-	if c.ThanosQuerierConfig == nil {
-		c.ThanosQuerierConfig = &ThanosQuerierConfig{}
+	if c.ClusterMonitoringConfiguration.ThanosQuerierConfig == nil {
+		c.ClusterMonitoringConfiguration.ThanosQuerierConfig = &ThanosQuerierConfig{}
 	}
-	if c.GrafanaConfig == nil {
-		c.GrafanaConfig = &GrafanaConfig{}
+	if c.ClusterMonitoringConfiguration.GrafanaConfig == nil {
+		c.ClusterMonitoringConfiguration.GrafanaConfig = &GrafanaConfig{}
 	}
-	if c.KubeStateMetricsConfig == nil {
-		c.KubeStateMetricsConfig = &KubeStateMetricsConfig{}
+	if c.ClusterMonitoringConfiguration.KubeStateMetricsConfig == nil {
+		c.ClusterMonitoringConfiguration.KubeStateMetricsConfig = &KubeStateMetricsConfig{}
 	}
-	if c.OpenShiftMetricsConfig == nil {
-		c.OpenShiftMetricsConfig = &OpenShiftStateMetricsConfig{}
+	if c.ClusterMonitoringConfiguration.OpenShiftMetricsConfig == nil {
+		c.ClusterMonitoringConfiguration.OpenShiftMetricsConfig = &OpenShiftStateMetricsConfig{}
 	}
-	if c.HTTPConfig == nil {
-		c.HTTPConfig = &HTTPConfig{}
+	if c.ClusterMonitoringConfiguration.HTTPConfig == nil {
+		c.ClusterMonitoringConfiguration.HTTPConfig = &HTTPConfig{}
 	}
-	if c.TelemeterClientConfig == nil {
-		c.TelemeterClientConfig = &TelemeterClientConfig{
+	if c.ClusterMonitoringConfiguration.TelemeterClientConfig == nil {
+		c.ClusterMonitoringConfiguration.TelemeterClientConfig = &TelemeterClientConfig{
 			TelemeterServerURL: "https://infogw.api.openshift.com/",
 		}
 	}
-	if c.K8sPrometheusAdapter == nil {
-		c.K8sPrometheusAdapter = &K8sPrometheusAdapter{}
+	if c.ClusterMonitoringConfiguration.K8sPrometheusAdapter == nil {
+		c.ClusterMonitoringConfiguration.K8sPrometheusAdapter = &K8sPrometheusAdapter{}
 	}
-	if c.EtcdConfig == nil {
-		c.EtcdConfig = &EtcdConfig{}
+	if c.ClusterMonitoringConfiguration.EtcdConfig == nil {
+		c.ClusterMonitoringConfiguration.EtcdConfig = &EtcdConfig{}
 	}
-	if c.UserWorkloadConfig == nil {
-		c.UserWorkloadConfig = &UserWorkloadConfig{}
+	if c.ClusterMonitoringConfiguration.UserWorkloadConfig == nil {
+		c.ClusterMonitoringConfiguration.UserWorkloadConfig = &UserWorkloadConfig{}
 	}
 }
 
@@ -278,18 +310,18 @@ func (c *Config) SetImages(images map[string]string) {
 }
 
 func (c *Config) SetTelemetryMatches(matches []string) {
-	c.PrometheusK8sConfig.TelemetryMatches = matches
+	c.ClusterMonitoringConfiguration.PrometheusK8sConfig.TelemetryMatches = matches
 }
 
 func (c *Config) SetRemoteWrite(rw bool) {
 	c.RemoteWrite = rw
-	if c.RemoteWrite && c.TelemeterClientConfig.TelemeterServerURL == "https://infogw.api.openshift.com/" {
-		c.TelemeterClientConfig.TelemeterServerURL = "https://infogw.api.openshift.com/metrics/v1/receive"
+	if c.RemoteWrite && c.ClusterMonitoringConfiguration.TelemeterClientConfig.TelemeterServerURL == "https://infogw.api.openshift.com/" {
+		c.ClusterMonitoringConfiguration.TelemeterClientConfig.TelemeterServerURL = "https://infogw.api.openshift.com/metrics/v1/receive"
 	}
 }
 
 func (c *Config) LoadClusterID(load func() (*configv1.ClusterVersion, error)) error {
-	if c.TelemeterClientConfig.ClusterID != "" {
+	if c.ClusterMonitoringConfiguration.TelemeterClientConfig.ClusterID != "" {
 		return nil
 	}
 
@@ -298,12 +330,12 @@ func (c *Config) LoadClusterID(load func() (*configv1.ClusterVersion, error)) er
 		return fmt.Errorf("error loading cluster version: %v", err)
 	}
 
-	c.TelemeterClientConfig.ClusterID = string(cv.Spec.ClusterID)
+	c.ClusterMonitoringConfiguration.TelemeterClientConfig.ClusterID = string(cv.Spec.ClusterID)
 	return nil
 }
 
 func (c *Config) LoadToken(load func() (*v1.Secret, error)) error {
-	if c.TelemeterClientConfig.Token != "" {
+	if c.ClusterMonitoringConfiguration.TelemeterClientConfig.Token != "" {
 		return nil
 	}
 
@@ -328,12 +360,12 @@ func (c *Config) LoadToken(load func() (*v1.Secret, error)) error {
 		return fmt.Errorf("unmarshaling pull secret failed: %v", err)
 	}
 
-	c.TelemeterClientConfig.Token = ps.Auths.COC.Auth
+	c.ClusterMonitoringConfiguration.TelemeterClientConfig.Token = ps.Auths.COC.Auth
 	return nil
 }
 
 func (c *Config) LoadProxy(load func() (*configv1.Proxy, error)) error {
-	if c.HTTPConfig.HTTPProxy != "" || c.HTTPConfig.HTTPSProxy != "" || c.HTTPConfig.NoProxy != "" {
+	if c.ClusterMonitoringConfiguration.HTTPConfig.HTTPProxy != "" || c.ClusterMonitoringConfiguration.HTTPConfig.HTTPSProxy != "" || c.ClusterMonitoringConfiguration.HTTPConfig.NoProxy != "" {
 		return nil
 	}
 
@@ -342,9 +374,9 @@ func (c *Config) LoadProxy(load func() (*configv1.Proxy, error)) error {
 		return fmt.Errorf("error loading proxy: %v", err)
 	}
 
-	c.HTTPConfig.HTTPProxy = p.Status.HTTPProxy
-	c.HTTPConfig.HTTPSProxy = p.Status.HTTPSProxy
-	c.HTTPConfig.NoProxy = p.Status.NoProxy
+	c.ClusterMonitoringConfiguration.HTTPConfig.HTTPProxy = p.Status.HTTPProxy
+	c.ClusterMonitoringConfiguration.HTTPConfig.HTTPSProxy = p.Status.HTTPSProxy
+	c.ClusterMonitoringConfiguration.HTTPConfig.NoProxy = p.Status.NoProxy
 
 	return nil
 }
