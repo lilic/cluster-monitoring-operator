@@ -64,20 +64,6 @@ type GlobalUserWorkloadConfig struct {
 	Retention       string `json:"retention"`
 }
 
-func NewUserWorkloadConfig(content io.Reader) (*UserWorkloadConfiguration, error) {
-	c := UserWorkloadConfiguration{}
-	err := k8syaml.NewYAMLOrJSONDecoder(content, 100).Decode(&c)
-	if err != nil {
-		return nil, err
-	}
-
-	res := &c
-	// TODO: should we apply any defaults?
-	//res.applyDefaults()
-
-	return res, nil
-}
-
 func (c *Config) IsUserWorkloadEnabled() bool {
 	if *c.ClusterMonitoringConfiguration.UserWorkloadEnabled == true {
 		return true
@@ -235,6 +221,9 @@ func NewConfig(content io.Reader) (*Config, error) {
 func (c *Config) applyDefaults() {
 	if c.Images == nil {
 		c.Images = &Images{}
+	}
+	if c.ClusterMonitoringConfiguration == nil {
+		c.ClusterMonitoringConfiguration = &ClusterMonitoringConfiguration{}
 	}
 	if c.ClusterMonitoringConfiguration.PrometheusOperatorConfig == nil {
 		c.ClusterMonitoringConfiguration.PrometheusOperatorConfig = &PrometheusOperatorConfig{}
@@ -402,4 +391,28 @@ func NewDefaultConfig() *Config {
 	c := &Config{}
 	c.applyDefaults()
 	return c
+}
+
+func NewDefaultUserWorkloadMonitoringConfig() *UserWorkloadConfiguration {
+	u := &UserWorkloadConfiguration{}
+	u.applyDefaults()
+	return u
+}
+
+func (u *UserWorkloadConfiguration) applyDefaults() {
+	if u.Global == nil {
+		u.Global = &GlobalUserWorkloadConfig{}
+	}
+}
+
+func NewUserConfigFromString(content string) (*UserWorkloadConfiguration, error) {
+	u := &UserWorkloadConfiguration{}
+	err := k8syaml.NewYAMLOrJSONDecoder(bytes.NewBuffer([]byte(content)), 100).Decode(&u)
+	if err != nil {
+		return nil, err
+	}
+
+	u.applyDefaults()
+
+	return u, nil
 }

@@ -309,7 +309,6 @@ func (o *Operator) sync(key string) error {
 	config.SetImages(o.images)
 	config.SetTelemetryMatches(o.telemetryMatches)
 	config.SetRemoteWrite(o.remoteWrite)
-	config.
 
 	factory := manifests.NewFactory(o.namespace, o.namespaceUserWorkload, config)
 
@@ -360,6 +359,30 @@ func (o *Operator) sync(key string) error {
 	return nil
 }
 
+func (o *Operator) loadUserWorkloadConfig() (*manifests.UserWorkloadConfiguration, error) {
+	// TODO:
+	// fetch confgimap and
+	// Populate c.UserWorkloadConfiguration if configmap is not empty.
+	userCM, err := o.client.GetConfigmap(o.userWorkloadConfigMapName, o.namespaceUserWorkload)
+	if err != nil {
+		klog.Warningf("Error loading user workload monitoring ConfigMap. Error: %v", err)
+		return nil, err
+	}
+	configContent, found := userCM.Data["config.yaml"]
+	if found {
+		uwc, err := manifests.NewUserConfigFromString(configContent)
+		if err != nil {
+			klog.Warningf("Error filling user workload confiugration from CofigMap. Error: %v", err)
+			return nil, err
+		}
+		return uwc, nil
+	}
+
+	// if configmap is empty create new with defaults
+	return manifests.NewDefaultUserWorkloadMonitoringConfig(), nil
+
+}
+
 func (o *Operator) loadConfig(key string) (*manifests.Config, error) {
 	obj, found, err := o.cmapInf.GetStore().GetByKey(key)
 	if err != nil {
@@ -391,13 +414,16 @@ func (o *Operator) Config(key string) (*manifests.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	/*
-		if c.UserWorkloadEnabled != nil && *c.UserWorkloadEnabled {
-			// TODO: Remove in 4.7 release.
-			*c.UserWorkloadConfig.Enabled = true
-			// do some other stuff
+
+	// Only use user workload monitoring configmap and populate if its enabled
+	// by admin via cluster monitoring configmap.
+	if *c.ClusterMonitoringConfiguration.UserWorkloadEnabled {
+		c.UserWorkloadConfiguration, err = o.loadUserWorkloadConfig()
+		if err != nil {
+
 		}
-	*/
+	}
+
 	// Only fetch the token and cluster ID if they have not been specified in the config.
 	if c.ClusterMonitoringConfiguration.TelemeterClientConfig.ClusterID == "" || c.ClusterMonitoringConfiguration.TelemeterClientConfig.Token == "" {
 		err := c.LoadClusterID(func() (*configv1.ClusterVersion, error) {
