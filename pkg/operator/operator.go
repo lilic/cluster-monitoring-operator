@@ -309,6 +309,7 @@ func (o *Operator) sync(key string) error {
 	config.SetImages(o.images)
 	config.SetTelemetryMatches(o.telemetryMatches)
 	config.SetRemoteWrite(o.remoteWrite)
+	config.
 
 	factory := manifests.NewFactory(o.namespace, o.namespaceUserWorkload, config)
 
