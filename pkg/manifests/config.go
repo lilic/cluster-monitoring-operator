@@ -379,9 +379,22 @@ func NewDefaultConfig() *Config {
 }
 
 type UserWorkloadConfiguration struct {
-	PrometheusOperator *PrometheusOperatorConfig `json:"prometheusOperator"`
-	Prometheus         *PrometheusK8sConfig      `json:"prometheus"`
-	ThanosRuler        *ThanosRulerConfig        `json:"thanosRuler"`
+	PrometheusOperator *PrometheusOperatorConfig   `json:"prometheusOperator"`
+	Prometheus         *PrometheusRestrictedConfig `json:"prometheus"`
+	ThanosRuler        *ThanosRulerConfig          `json:"thanosRuler"`
+}
+
+type PrometheusRestrictedConfig struct {
+	LogLevel            string                    `json:"logLevel"`
+	Retention           string                    `json:"retention"`
+	NodeSelector        map[string]string         `json:"nodeSelector"`
+	Tolerations         []v1.Toleration           `json:"tolerations"`
+	Resources           *v1.ResourceRequirements  `json:"resources"`
+	ExternalLabels      map[string]string         `json:"externalLabels"`
+	VolumeClaimTemplate *v1.PersistentVolumeClaim `json:"volumeClaimTemplate"`
+	Hostport            string                    `json:"hostport"`
+	RemoteWrite         []monv1.RemoteWriteSpec   `json:"remoteWrite"`
+	EnforcedSampleLimit *uint64                   `json:"enforcedSampleLimit"`
 }
 
 func (u *UserWorkloadConfiguration) applyDefaults() {
@@ -389,7 +402,7 @@ func (u *UserWorkloadConfiguration) applyDefaults() {
 		u.PrometheusOperator = &PrometheusOperatorConfig{}
 	}
 	if u.Prometheus == nil {
-		u.Prometheus = &PrometheusK8sConfig{}
+		u.Prometheus = &PrometheusRestrictedConfig{}
 	}
 	if u.ThanosRuler == nil {
 		u.ThanosRuler = &ThanosRulerConfig{}

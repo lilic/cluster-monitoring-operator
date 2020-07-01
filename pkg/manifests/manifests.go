@@ -1445,6 +1445,10 @@ func (f *Factory) PrometheusUserWorkload(grpcTLS *v1.Secret) (*monv1.Prometheus,
 		p.Spec.RemoteWrite = f.config.UserWorkloadConfiguration.Prometheus.RemoteWrite
 	}
 
+	if f.config.UserWorkloadConfiguration.Prometheus.EnforcedSampleLimit != nil {
+		p.Spec.EnforcedSampleLimit = f.config.UserWorkloadConfiguration.Prometheus.EnforcedSampleLimit
+	}
+
 	// TODO: remove after 4.7
 
 	if f.config.ClusterMonitoringConfiguration.PrometheusUserWorkloadConfig.LogLevel != "" {
